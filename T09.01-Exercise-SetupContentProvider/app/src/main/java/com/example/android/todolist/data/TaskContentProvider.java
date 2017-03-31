@@ -92,7 +92,42 @@ public class TaskContentProvider extends ContentProvider {
     public Cursor query(@NonNull Uri uri, String[] projection, String selection,
                         String[] selectionArgs, String sortOrder) {
 
-        throw new UnsupportedOperationException("Not yet implemented");
+        final SQLiteDatabase db = mTaskDbHelper.getReadableDatabase();
+        Cursor returnCursor = null;
+        int match = sUriMatcher.match(uri);
+
+        switch (match){
+            case TASKS:
+                returnCursor = db.query(TaskContract.TaskEntry.TABLE_NAME,
+                        projection,
+                        selection,
+                        selectionArgs,
+                        null,
+                        null,
+                        sortOrder);
+                break;
+            case TASKS_WITH_ID:
+
+                String id = uri.getPathSegments().get(1);
+
+                String mSelection ="=?";
+                String[] mSelectionArgs = new String[]{id};
+
+                returnCursor = db.query(TaskContract.TaskEntry.TABLE_NAME,
+                        projection,
+                        mSelection,
+                        mSelectionArgs,
+                        null,
+                        null,
+                        sortOrder);
+                break;
+            default:
+                throw new UnsupportedOperationException("Not yet implemented.");
+        }
+        returnCursor.setNotificationUri(getContext().getContentResolver(), uri);
+        return returnCursor;
+
+
     }
 
 
