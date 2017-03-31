@@ -17,14 +17,33 @@
 package com.example.android.todolist.data;
 
 import android.content.ContentProvider;
+import android.content.ContentUris;
 import android.content.ContentValues;
+import android.content.Context;
+import android.content.UriMatcher;
 import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.net.Uri;
+import android.sax.RootElement;
 import android.support.annotation.NonNull;
 
-// TODO (1) Verify that TaskContentProvider extends from ContentProvider and implements required methods
 public class TaskContentProvider extends ContentProvider {
 
+    private TaskDbHelper mTaskDbHelper;
+    public static final int TASKS = 100;
+    public static final int TASKS_WITH_ID = 101;
+
+    public static final UriMatcher sUriMatcher = buildUriMatcher();
+
+    public static UriMatcher buildUriMatcher(){
+
+        UriMatcher uriMatcher = new UriMatcher(UriMatcher.NO_MATCH);
+
+        uriMatcher.addURI(TaskContract.CONTENT_AUTHORITY, TaskContract.PATH_TASKS, TASKS);
+        uriMatcher.addURI(TaskContract.CONTENT_AUTHORITY, TaskContract.PATH_TASKS+ "/#", TASKS_WITH_ID);
+
+        return uriMatcher;
+    }
 
     /* onCreate() is where you should initialize anything you’ll need to setup
     your underlying data source.
@@ -33,17 +52,39 @@ public class TaskContentProvider extends ContentProvider {
      */
     @Override
     public boolean onCreate() {
-        // TODO (2) Complete onCreate() and initialize a TaskDbhelper on startup
-        // [Hint] Declare the DbHelper as a global variable
-
-        return false;
+        /* TODO (2) Complete onCreate() and initialize a TaskDbhelper on startup
+        * Completed Step 2
+        * */
+        Context context = getContext();
+        mTaskDbHelper = new TaskDbHelper(context);
+        return true;
     }
 
 
     @Override
     public Uri insert(@NonNull Uri uri, ContentValues values) {
 
-        throw new UnsupportedOperationException("Not yet implemented");
+        final SQLiteDatabase db = mTaskDbHelper.getWritableDatabase();
+        int match = sUriMatcher.match(uri);
+        Uri returnUri = null;
+        switch (match){
+            case TASKS:
+                long id = db.insert(TaskContract.TaskEntry.TABLE_NAME,null, values);
+                if(id > 0){
+                    returnUri = ContentUris.withAppendedId(TaskContract.TaskEntry.CONTENT_URI, id);
+                }else {
+                    throw new android.database.SQLException("cannot insert data into row"+ uri);
+                }
+                break;
+            case TASKS_WITH_ID:
+                break;
+            default:
+                throw new UnsupportedOperationException("Not yet implemented");
+
+        }
+        getContext().getContentResolver().notifyChange(uri,null);
+
+        return returnUri;
     }
 
 
