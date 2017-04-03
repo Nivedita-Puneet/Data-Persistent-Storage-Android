@@ -22,6 +22,7 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.content.UriMatcher;
 import android.database.Cursor;
+import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.net.Uri;
 import android.sax.RootElement;
@@ -134,7 +135,33 @@ public class TaskContentProvider extends ContentProvider {
     @Override
     public int delete(@NonNull Uri uri, String selection, String[] selectionArgs) {
 
-        throw new UnsupportedOperationException("Not yet implemented");
+        final SQLiteDatabase db = mTaskDbHelper.getWritableDatabase();
+        int match = sUriMatcher.match(uri);
+        int numberOfRowsRemaining = 0;
+        switch (match){
+            case TASKS:
+                 break;
+            case TASKS_WITH_ID:
+
+                 String id = uri.getPathSegments().get(1);
+                 String mSelection = "_id=?";
+                 String[] mSelectionArgs = new String[]{id};
+                 numberOfRowsRemaining = db.delete(TaskContract.TaskEntry.TABLE_NAME,
+                                                   mSelection,
+                                                   mSelectionArgs
+                                                   );
+
+
+                 break;
+            default:
+                throw new UnsupportedOperationException("not yet implemented");
+
+        }
+            if(numberOfRowsRemaining != 0){
+                getContext().getContentResolver().notifyChange(uri,null);
+            }
+
+        return numberOfRowsRemaining;
     }
 
 
@@ -142,14 +169,50 @@ public class TaskContentProvider extends ContentProvider {
     public int update(@NonNull Uri uri, ContentValues values, String selection,
                       String[] selectionArgs) {
 
-        throw new UnsupportedOperationException("Not yet implemented");
+        final SQLiteDatabase db = mTaskDbHelper.getWritableDatabase();
+        int numberOfRowsUpdated = 0;
+
+        int match = sUriMatcher.match(uri);
+
+        String id = uri.getPathSegments().get(1);
+        String mSelection = "_id=?";
+        String[] mSelectionArgs = new String[]{id};
+
+        switch (match){
+            case TASKS:
+                 break;
+            case TASKS_WITH_ID:
+                 numberOfRowsUpdated = db.update(TaskContract.TaskEntry.TABLE_NAME,values,mSelection,mSelectionArgs);
+                 break;
+            default:
+                 throw  new UnsupportedOperationException("unknown uri" + uri);
+        }
+
+        if(numberOfRowsUpdated != 0){
+            getContext().getContentResolver().notifyChange(uri, null);
+        }
+
+        return numberOfRowsUpdated;
+
     }
 
 
     @Override
     public String getType(@NonNull Uri uri) {
 
-        throw new UnsupportedOperationException("Not yet implemented");
+        int match = sUriMatcher.match(uri);
+
+        switch (match) {
+            case TASKS:
+                // directory
+                return "vnd.android.cursor.dir" + "/" + TaskContract.CONTENT_AUTHORITY + "/" + TaskContract.PATH_TASKS;
+            case TASKS_WITH_ID:
+                // single item type
+                return "vnd.android.cursor.item" + "/" + TaskContract.CONTENT_AUTHORITY + "/" + TaskContract.PATH_TASKS;
+            default:
+                throw new UnsupportedOperationException("Unknown uri: " + uri);
+        }
+
     }
 
 }
