@@ -23,6 +23,7 @@ public class MainActivity extends AppCompatActivity {
     FloatingActionButton addPets;
     PetsDBHelper mDBHelper;
 
+    public static final String TAG = MainActivity.class.getSimpleName();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -81,11 +82,34 @@ public class MainActivity extends AppCompatActivity {
 
         // Perform this raw SQL query "SELECT * FROM pets"
         // to get a Cursor that contains all rows from the pets table.
-        Cursor cursor = db.rawQuery("SELECT * FROM " + PetsContract.PetsEntry.TABLE_NAME, null);
+        Cursor cursor = db.query(PetsContract.PetsEntry.TABLE_NAME,
+                null,
+                null,
+                null,
+                null,
+                null, null);
         try {
             // Display the number of rows in the Cursor (which reflects the number of rows in the
             // pets table in the database).
+            int _id = cursor.getColumnIndex(PetsContract.PetsEntry._ID);
+            int petsName = cursor.getColumnIndex(PetsContract.PetsEntry.COLUMN_PET_NAME);
+            int petsBreed = cursor.getColumnIndex(PetsContract.PetsEntry.COLUMN_PET_BREED);
+            int petsWeight = cursor.getColumnIndex(PetsContract.PetsEntry.COLUMN_PET_WEIGHT);
+            int petsGender = cursor.getColumnIndex(PetsContract.PetsEntry.COLUMN_PET_GENDER);
+
             cursorCount.setText("Number of pets available in Pets Database." + ":" + cursor.getCount());
+
+            while ((cursor.moveToNext())) {
+
+                int petsId = cursor.getInt(_id);
+                String name = cursor.getString(petsName);
+                String breed = cursor.getString(petsBreed);
+                int gender = cursor.getInt(petsGender);
+                int weight = cursor.getInt(petsWeight);
+
+                Log.i(TAG, petsId + "-" + name + "-" + breed + "-" + gender + "-" + weight);
+
+            }
         } finally {
             // Always close the cursor when you're done reading from it. This releases all its
             // resources and makes it invalid.
