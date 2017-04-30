@@ -1,7 +1,7 @@
 package com.example.petsprovider;
 
 import android.content.ContentValues;
-import android.database.sqlite.SQLiteDatabase;
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
@@ -81,8 +81,6 @@ public class EditorActivity extends AppCompatActivity{
 
     private void insertPet() {
 
-        SQLiteDatabase db = mDBHelper.getWritableDatabase();
-
         String petName = name.getText().toString().trim();
         String petBreed = breed.getText().toString().trim();
         String petWeight = weight.getText().toString().trim();
@@ -93,12 +91,9 @@ public class EditorActivity extends AppCompatActivity{
         contentValues.put(PetsContract.PetsEntry.COLUMN_PET_GENDER, mGender);
         contentValues.put(PetsContract.PetsEntry.COLUMN_PET_WEIGHT, Integer.parseInt(petWeight));
 
-        long rowID = db.insert(PetsContract.PetsEntry.TABLE_NAME, null, contentValues);
+        Uri rowID = getContentResolver().insert(PetsContract.PetsEntry.CONTENT_URI, contentValues);
 
-        if (rowID < 1) {
-
-            Toast.makeText(this, "Error inserting a row into the database" + rowID, Toast.LENGTH_SHORT).show();
-        }
+        Toast.makeText(this, "Pet saved" + rowID, Toast.LENGTH_LONG).show();
     }
 
     @Override
