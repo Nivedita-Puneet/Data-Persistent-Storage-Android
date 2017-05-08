@@ -1,10 +1,15 @@
 package com.example.petsprovider;
 
+import android.app.LoaderManager;
 import android.content.ContentValues;
+import android.content.CursorLoader;
+import android.content.Loader;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -21,12 +26,16 @@ import com.example.petsprovider.data.PetsDBHelper;
  * Created by PUNEETU on 17-04-2017.
  */
 
-public class EditorActivity extends AppCompatActivity{
+public class EditorActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<Cursor> {
 
     Spinner category_gender;
-    EditText weight, name, breed;
+    EditText mEditPetWeight, mEditPetName, mEditPetBreed;
     private int mGender = PetsContract.PetsEntry.GENDER_UNKNOWN;
     PetsDBHelper mDBHelper;
+
+    public static final String TAG = EditorActivity.class.getSimpleName();
+    public static final int EDIT_PETS_LOADER = 1;
+    private Uri mContentUri;
 
     @Override
     public void onCreate(Bundle savedInstanceState){
@@ -40,12 +49,24 @@ public class EditorActivity extends AppCompatActivity{
     private void initializeControls(){
 
         mDBHelper = new PetsDBHelper(this);
-        weight = (EditText)findViewById(R.id.edit_pet_weight);
-        name = (EditText)findViewById(R.id.edit_pet_name);
-        breed = (EditText)findViewById(R.id.edit_pet_breed);
+        mEditPetWeight = (EditText) findViewById(R.id.edit_pet_weight);
+        mEditPetName = (EditText) findViewById(R.id.edit_pet_name);
+        mEditPetBreed = (EditText) findViewById(R.id.edit_pet_breed);
 
         category_gender = (Spinner)findViewById(R.id.spinner_gender);
         setSpinnerAdapter();
+
+        mContentUri = getIntent().getData();
+
+        if (mContentUri == null) {
+            setTitle(getString(R.string.editor_activity_title_new_pet));
+        } else {
+            setTitle(getString(R.string.editor_activity_title_edit_pet));
+            getLoaderManager().initLoader(EDIT_PETS_LOADER, null, EditorActivity.this);
+
+            Log.i(TAG, mContentUri + "");
+        }
+
     }
 
     private void setSpinnerAdapter(){
@@ -79,11 +100,10 @@ public class EditorActivity extends AppCompatActivity{
         });
     }
 
-    private void insertPet() {
-
-        String petName = name.getText().toString().trim();
-        String petBreed = breed.getText().toString().trim();
-        String petWeight = weight.getText().toString().trim();
+    private void savePet() {
+        String petName = mEditPetName.getText().toString().trim();
+        String petBreed = mEditPetBreed.getText().toString().trim();
+        String petWeight = mEditPetWeight.getText().toString().trim();
 
         ContentValues contentValues = new ContentValues();
         contentValues.put(PetsContract.PetsEntry.COLUMN_PET_NAME, petName);
@@ -91,9 +111,20 @@ public class EditorActivity extends AppCompatActivity{
         contentValues.put(PetsContract.PetsEntry.COLUMN_PET_GENDER, mGender);
         contentValues.put(PetsContract.PetsEntry.COLUMN_PET_WEIGHT, Integer.parseInt(petWeight));
 
-        Uri rowID = getContentResolver().insert(PetsContract.PetsEntry.CONTENT_URI, contentValues);
+        if (mContentUri == null) {
 
-        Toast.makeText(this, "Pet saved" + rowID, Toast.LENGTH_LONG).show();
+            Uri rowID = getContentResolver().insert(PetsContract.PetsEntry.CONTENT_URI, contentValues);
+
+            Toast.makeText(this, "Pet saved" + rowID, Toast.LENGTH_LONG).show();
+
+        } else {
+
+            int rowsAffected = getContentResolver().update(mContentUri, contentValues, null, null);
+
+            if (rowsAffected == 0) {
+                Toast.makeText(this, "Update failed", Toast.LENGTH_SHORT).show();
+            }
+        }
     }
 
     @Override
@@ -106,7 +137,7 @@ public class EditorActivity extends AppCompatActivity{
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case R.id.action_save:
-                insertPet();
+                savePet();
                 finish();
                 return true;
             case R.id.action_delete:
@@ -114,6 +145,59 @@ public class EditorActivity extends AppCompatActivity{
 
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public Loader<Cursor> onCreateLoader(int id, Bundle args) {
+
+        String[] projection = {
+                PetsContract.PetsEntry._ID,
+                PetsContract.PetsEntry.COLUMN_PET_NAME,
+                PetsContract.PetsEntry.COLUMN_PET_BREED,
+                PetsContract.PetsEntry.COLUMN_PET_GENDER,
+                PetsContract.PetsEntry.COLUMN_PET_WEIGHT};
+
+        // This loader will execute the ContentProvider's query method on a background thread
+        return new CursorLoader(this,   // Parent activity context
+                mContentUri,         // Query the content URI for the current pet
+                projection,             // Columns to include in the resulting Cursor
+                null,                   // No selection clause
+                null,                   // No selection arguments
+                null);                  // Default sort order
+
+    }
+
+    @Override
+    public void onLoadFinished(Loader<Cursor> loader, Cursor cursor) {
+
+        if (cursor.moveToFirst()) {
+            // Find the columns of pet attributes that we're interested in
+            int nameColumnIndex = cursor.getColumnIndex(PetsContract.PetsEntry.COLUMN_PET_NAME);
+            int breedColumnIndex = cursor.getColumnIndex(PetsContract.PetsEntry.COLUMN_PET_BREED);
+            int genderColumnIndex = cursor.getColumnIndex(PetsContract.PetsEntry.COLUMN_PET_GENDER);
+            int weightColumnIndex = cursor.getColumnIndex(PetsContract.PetsEntry.COLUMN_PET_WEIGHT);
+
+            // Extract out the value from the Cursor for the given column index
+            String name = cursor.getString(nameColumnIndex);
+            String breed = cursor.getString(breedColumnIndex);
+            int gender = cursor.getInt(genderColumnIndex);
+            int weight = cursor.getInt(weightColumnIndex);
+
+            mEditPetName.setText(name);
+            mEditPetBreed.setText(breed);
+            mEditPetWeight.setText(Integer.toString(weight));
+
+        }
+
+    }
+
+
+    @Override
+    public void onLoaderReset(Loader<Cursor> loader) {
+        mEditPetWeight.setText(null);
+        mEditPetName.setText(null);
+        mEditPetBreed.setText(null);
+
     }
 }
 

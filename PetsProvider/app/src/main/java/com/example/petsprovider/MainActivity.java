@@ -1,7 +1,11 @@
 package com.example.petsprovider;
 
+import android.app.LoaderManager;
+import android.content.ContentUris;
 import android.content.ContentValues;
+import android.content.CursorLoader;
 import android.content.Intent;
+import android.content.Loader;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
@@ -11,19 +15,28 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.TextView;
 
 import com.example.petsprovider.data.PetsContract;
 import com.example.petsprovider.data.PetsDBHelper;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<Cursor> {
 
     TextView petTextView;
     TextView cursorCount;
     FloatingActionButton addPets;
     PetsDBHelper mDBHelper;
     ListView listView;
+
+    PetsCursorAdapter petsCursorAdapter;
+
+    static final String[] projection = new String[]{PetsContract.PetsEntry._ID,
+            PetsContract.PetsEntry.COLUMN_PET_NAME,
+            PetsContract.PetsEntry.COLUMN_PET_BREED};
+    static final int INIT_PETS_LOADER = 0;
+
 
     public static final String TAG = MainActivity.class.getSimpleName();
 
@@ -50,8 +63,22 @@ public class MainActivity extends AppCompatActivity {
         });
 
         listView = (ListView) findViewById(R.id.petsListview);
+        View empty_view = findViewById(R.id.empty_view);
+        listView.setEmptyView(empty_view);
 
-        displayDatabaseInfo();
+        petsCursorAdapter = new PetsCursorAdapter(MainActivity.this, null);
+        listView.setAdapter(petsCursorAdapter);
+        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> adapterView, View view, int position, long id) {
+
+                Intent intent = new Intent(MainActivity.this, EditorActivity.class);
+                Uri updatePetWithId = ContentUris.withAppendedId(PetsContract.PetsEntry.CONTENT_URI, id);
+                intent.setData(updatePetWithId);
+                startActivity(intent);
+            }
+        });
+        getLoaderManager().initLoader(INIT_PETS_LOADER, null, this);
     }
 
     @Override
@@ -67,7 +94,6 @@ public class MainActivity extends AppCompatActivity {
         switch (item.getItemId()){
             case R.id.action_insert_dummy_data:
                 insertPet();
-                displayDatabaseInfo();
                  break;
             case R.id.action_delete_all_entries:
                 break;
@@ -76,27 +102,6 @@ public class MainActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
-    private void displayDatabaseInfo() {
-        // To access our database, we instantiate our subclass of SQLiteOpenHelper
-        // and pass the context, which is the current activity.
-
-        // Create and/or open a database to read from it
-        /*SQLiteDatabase db = mDBHelper.getReadableDatabase();
-
-        // Perform this raw SQL query "SELECT * FROM pets"
-        // to get a Cursor that contains all rows from the pets table.
-        Cursor cursor = db.query(PetsContract.PetsEntry.TABLE_NAME,
-                null,
-                null,
-                null,
-                null,
-                null, null);*/
-
-        Cursor cursor = getContentResolver().query(PetsContract.PetsEntry.CONTENT_URI, null, null, null, null);
-        PetsCursorAdapter cursorAdapter = new PetsCursorAdapter(MainActivity.this, cursor);
-        listView.setAdapter(cursorAdapter);
-
-    }
 
     private void insertPet() {
 
@@ -112,9 +117,20 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
-    public void onStart() {
-        super.onStart();
-        displayDatabaseInfo();
+    public Loader<Cursor> onCreateLoader(int i, Bundle bundle) {
+
+        return new CursorLoader(this, PetsContract.PetsEntry.CONTENT_URI, projection, null, null, null);
     }
 
+    @Override
+    public void onLoadFinished(Loader<Cursor> loader, Cursor cursor) {
+
+        petsCursorAdapter.swapCursor(cursor);
+    }
+
+    @Override
+    public void onLoaderReset(Loader<Cursor> loader) {
+
+        petsCursorAdapter.swapCursor(null);
+    }
 }
